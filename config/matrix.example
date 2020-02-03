@@ -1,0 +1,11 @@
+{
+    "access_token": "",
+    "device_id": "",
+    "home_server": "laura.pm",
+    "user_id": "@reds:laura.pm",
+    "well_known": {
+        "m.homeserver": {
+            "base_url": "https://matrix.laura.pm/"
+        }
+    }
+}
