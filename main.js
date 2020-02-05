@@ -24,7 +24,19 @@ matrixClient.on('Room.timeline', (event, room, toStartOfTimeline) => {
 	if (event.getType() !== 'm.room.message') {
 		return;
 	}
-	messages.matrix.push([room.name, room.roomId, event.getSender(), event.getContent().body]);
+
+	file = event.getContent().url ? event.getContent().url.substring(6) : ''
+	homeserver = matrixConfig.well_known['m.homeserver'].base_url
+	messages.matrix.push({  'room': room.name,
+				'id': room.roomId, 
+				'sender': event.getSender(),
+				'type': event.getContent().msgtype,
+				'body': event.getContent().body,
+				'images': {
+					'orig': file ? homeserver+"/_matrix/media/r0/download/"+file : '',
+					'thumb': file ? homeserver+"/_matrix/media/r0/thumbnail/"+file+"?width=256&height=-1" : ''
+				}
+				});
 });
 
 async function startMatrix() {
@@ -65,7 +77,7 @@ app.post('/getHistory', async (req, res) => {
 			res.type('text/plain; charset=utf-8');
 			const filtered = [];
 			messages.matrix.forEach((element) => {
-				if (element[1] === req.body.number) {
+				if (element.id === req.body.number) {
 					filtered.push(element);
 				}
 			});
