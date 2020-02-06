@@ -34,7 +34,8 @@ matrixClient.on('Room.timeline', (event, room, toStartOfTimeline) => {
 				'body': event.getContent().body,
 				'images': {
 					'orig': file ? homeserver+"/_matrix/media/r0/download/"+file : '',
-					'thumb': file ? homeserver+"/_matrix/media/r0/thumbnail/"+file+"?width=256&height=-1" : ''
+					'thumb': file ? homeserver+"/_matrix/media/r0/thumbnail/"+file+"?width=256&height=-1" : '',
+					'name': file ? file : ''
 				}
 				});
 });
