@@ -12,7 +12,7 @@
   "dependencies": {
     "fastify": "^2.11.0",
     "fastify-formbody": "^3.1.0",
-    "matrix-js-sdk": "^4.0.0"
+    "matrix-js-sdk": "^2.4.6"
   },
   "devDependencies": {
     "eslint": "^6.8.0",
