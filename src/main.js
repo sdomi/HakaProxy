@@ -5,12 +5,12 @@ const fs = require('fs');
 const app = f();
 app.register(require('fastify-formbody'));
 
-const config = JSON.parse(fs.readFileSync('config/config.json'));
-const contacts = JSON.parse(fs.readFileSync('config/contacts.json'));
+const config = JSON.parse(fs.readFileSync('../config/config.json'));
+const contacts = JSON.parse(fs.readFileSync('../config/contacts.json'));
 const messages = {};
 messages.matrix = [];
 
-const matrixConfig = JSON.parse(fs.readFileSync('config/matrix.json'));
+const matrixConfig = JSON.parse(fs.readFileSync('../config/matrix.json'));
 const matrixClient = sdk.createClient({
 	baseUrl: matrixConfig.well_known['m.homeserver'].base_url,
 	accessToken: matrixConfig.access_token,
@@ -24,7 +24,7 @@ matrixClient.on('Room.timeline', (event, room, toStartOfTimeline) => {
 	if (event.getType() !== 'm.room.message') {
 		return;
 	}
-	const timestamp = Math.floor(event.getTs()/1000);
+	const timestamp = Math.floor(event.getTs() / 1000);
 	const file = event.getContent().url ? event.getContent().url.substring(6) : '';
 	const homeserver = matrixConfig.well_known['m.homeserver'].base_url;
 	messages.matrix.push({
@@ -33,7 +33,7 @@ matrixClient.on('Room.timeline', (event, room, toStartOfTimeline) => {
 		sender: event.getSender(),
 		type: event.getContent().msgtype,
 		body: event.getContent().body,
-		timestamp: timestamp,
+		timestamp,
 		images: {
 			orig: file ? `${homeserver}/_matrix/media/r0/download/${file}` : '',
 			thumb: file ? `${homeserver}/_matrix/media/r0/thumbnail/${file}?width=256&height=-1` : '',
