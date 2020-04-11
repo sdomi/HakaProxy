@@ -2,6 +2,7 @@
   "extends": "eslint-config-airbnb-base",
   "rules": {
     "indent": ["warn", "tab"],
-    "no-tabs": "off"
+    "no-tabs": "off",
+    "no-console": "off"
   }
 }

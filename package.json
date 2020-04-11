@@ -13,6 +13,7 @@
     "fastify": "^2.11.0",
     "fastify-formbody": "^3.1.0",
     "matrix-js-sdk": "^2.4.6",
+    "ow": "^0.17.0",
     "tdl": "^6.0.1",
     "tdl-tdlib-ffi": "^1.4.0"
   },

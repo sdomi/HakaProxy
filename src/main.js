@@ -1,117 +1,69 @@
-const sdk = require('matrix-js-sdk');
 const f = require('fastify');
+const fastifyFormBody = require('fastify-formbody');
+const ow = require('ow');
 const fs = require('fs');
+const path = require('path');
 
 const app = f();
-app.register(require('fastify-formbody'));
+app.register(fastifyFormBody);
 
-const config = JSON.parse(fs.readFileSync('../config/config.json'));
-const contacts = JSON.parse(fs.readFileSync('../config/contacts.json'));
-const messages = {};
-messages.matrix = [];
+const config = JSON.parse(fs.readFileSync(path.resolve(__dirname, '..', 'config', 'config.json')));
 
-const matrixConfig = JSON.parse(fs.readFileSync('../config/matrix.json'));
-const matrixClient = sdk.createClient({
-	baseUrl: matrixConfig.well_known['m.homeserver'].base_url,
-	accessToken: matrixConfig.access_token,
-	userId: matrixConfig.user_id,
+const services = new Map();
+
+config.services.forEach(async (serviceName) => {
+	// eslint-disable-next-line import/no-dynamic-require, global-require
+	const RawService = require(path.resolve(__dirname, 'services', serviceName, serviceName));
+	const service = new RawService(JSON.parse(fs.readFileSync(path.resolve(__dirname, '..', 'config', `${serviceName}.json`))));
+	await service.start();
+	services.set(serviceName, service);
 });
 
-matrixClient.on('Room.timeline', (event, room, toStartOfTimeline) => {
-	if (toStartOfTimeline) {
-		return;
+app.addHook('preValidation', (req, reply, next) => {
+	if (req.body && req.body.token === config.token) {
+		ow(req.body.service, 'service', ow.string);
+		const service = services.get(req.body.service) || null;
+		if (service) {
+			req.service = service;
+			next();
+		} else {
+			next({ code: 400, message: 'Invalid service name' });
+		}
 	}
-	if (event.getType() !== 'm.room.message') {
-		return;
-	}
-	const timestamp = Math.floor(event.getTs() / 1000);
-	const file = event.getContent().url ? event.getContent().url.substring(6) : '';
-	const homeserver = matrixConfig.well_known['m.homeserver'].base_url;
-	messages.matrix.push({
-		room: room.name,
-		id: room.roomId,
-		sender: event.getSender(),
-		type: event.getContent().msgtype,
-		body: event.getContent().body,
-		timestamp,
-		images: {
-			orig: file ? `${homeserver}/_matrix/media/r0/download/${file}` : '',
-			thumb: file ? `${homeserver}/_matrix/media/r0/thumbnail/${file}?width=256&height=-1` : '',
-			name: file || '',
+	next();
+});
+
+app.addHook('preSerialization', (req, reply, data, done) => {
+	const wrapped = { data };
+	done(null, wrapped);
+});
+
+app.addHook('onError', (req, reply, error, done) => {
+	done(null, {
+		error: {
+			code: error.statusCode,
+			message: error.name,
 		},
 	});
 });
 
-async function startMatrix() {
-	matrixClient.startClient({ initialSyncLimit: 100 });
-}
-
-app.get('/', async (req, res) => {
-	res.type('text/html');
-	return 'asdf';
+app.post('/getContacts', async (req, reply) => {
+	reply.send(await req.service.getContacts());
 });
 
-app.post('/getContacts', async (req, res) => {
-	res.type('text/plain; charset=utf-8');
-	if (req.body.token === config.token) {
-		switch (req.body.type) {
-		case 'matrix': {
-			matrixClient.getRooms().forEach((element) => { // element map is CONFUSIGN
-				contacts[element.roomId] = { id: element.roomId, name: element.name, type: 'matrix' };
-			});
-			const deduplicated = [];
-			Object.entries(contacts).forEach((element) => {
-				deduplicated.push(element[1]);
-			});
-			return JSON.stringify(deduplicated);
-		}
-		default:
-			return '';
-		}
-	} else {
-		return config.invalidTokenMessage;
-	}
+app.post('/getHistory', async (req, reply) => {
+	const { contactID } = req.body;
+	ow(contactID, ow.string.nonEmpty);
+	reply.send(await req.service.getHistory(contactID));
 });
 
-app.post('/getHistory', async (req, res) => {
-	if (req.body.token === config.token) {
-		switch (req.body.type) {
-		case 'matrix': {
-			res.type('text/plain; charset=utf-8');
-			const filtered = [];
-			messages.matrix.forEach((element) => {
-				if (element.id === req.body.number) {
-					filtered.push(element);
-				}
-			});
-			return JSON.stringify(filtered);
-		}
-		default:
-			return '';
-		}
-	} else {
-		return config.invalidTokenMessage;
-	}
-});
-
-app.post('/sendMessage', async (req) => {
-	if (req.body.token === config.token) {
-		switch (req.body.type) {
-		case 'matrix':
-			matrixClient.sendEvent(req.body.recipient, 'm.room.message', { body: req.body.msg, msgtype: 'm.text' }, '', (err) => {
-				console.log(err);
-			});
-			break;
-		default:
-			return '';
-		}
-		return '';
-	}
-	return config.invalidTokenMessage;
+app.post('/sendMessage', async (req, reply) => {
+	const { recipient, body } = req.body;
+	ow(recipient, ow.string.nonEmpty);
+	ow(body, ow.string);
+	reply.send(await req.service.sendMessage({ recipient, body }));
 });
 
 app.listen(config.port, config.ip, (err) => {
 	console.log(err || 'Running!');
 });
-
-startMatrix();

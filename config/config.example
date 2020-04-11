@@ -2,5 +2,6 @@
     "ip": "0.0.0.0",
     "port": 8888,
     "token": "asdf",
-    "invalidTokenMessage": "you shall not pass"
+    "invalidTokenMessage": "you shall not pass",
+    "services": ["matrix"]
 }
